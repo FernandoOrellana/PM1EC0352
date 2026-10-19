@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Bitacora</string>
+    <string name="Bitacora">Bitacora Jose</string>
+    <string name="Guardar">Guardar</string>
+    <string name="Verapuntes">Ver apuntes</string>
+    <string name="Grabar">Grabar</string>
+    <string name="Reproducir">Reproducir</string>
+    <string name="Atras">Atras</string>
+    <string name="Reproducir_Nota">Reproducir Nota</string>
+    <string name="Dictador_de_texto">Dictador de texto</string>
+    <string name="Eliminar_Apunte">Eliminar Apuntes</string>
+    <string name="Actualizar_Apuntes">Actualizar Apuntes</string>
+
+    <string-array name="lista_temas">
+        <item>Seleccione un tema</item>
+        <item>Programacion movil I</item>
+        <item>Base de datos</item>
+        <item>Redes I</item>
+        <item>Ingles tecnico</item>
+    </string-array>
+</resources>
+
