@@ -5,16 +5,21 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.speech.RecognizerIntent
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.Chronometer
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -227,6 +232,11 @@ class ApuntesActivity : AppCompatActivity() {
             setPadding(40, 20, 40, 20)
         }
 
+        var nuevoAudioPath = apunte.audio
+        var isRecordingDialog = false
+        var dialogMediaRecorder: MediaRecorder? = null
+        var dialogMediaPlayer: MediaPlayer? = null
+
         val etTema = EditText(context).apply {
             hint = "Tema"
             setText(apunte.tema)
@@ -257,11 +267,111 @@ class ApuntesActivity : AppCompatActivity() {
         }
         etDialogDescripcion = etDesc
 
+        // Sección de Audio en el diálogo
+        val tvEstadoAudio = TextView(context).apply {
+            val tieneAudio = nuevoAudioPath.isNotEmpty() && File(nuevoAudioPath).exists()
+            text = if (tieneAudio) "Audio: 🔊 Con nota de voz" else "Audio: 🔇 Sin nota de voz"
+            setPadding(0, 15, 0, 5)
+            textSize = 14f
+        }
+
+        val cronometroDialog = Chronometer(context).apply {
+            textSize = 16f
+            setPadding(0, 5, 0, 5)
+        }
+
+        val btnGrabarAudioDialog = Button(context).apply {
+            text = "🎤 Grabar Audio"
+        }
+
+        val btnReproducirAudioDialog = Button(context).apply {
+            text = "▶ Reproducir"
+        }
+
+        val layoutBotonesAudio = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(btnGrabarAudioDialog)
+            addView(btnReproducirAudioDialog)
+        }
+
+        btnGrabarAudioDialog.setOnClickListener {
+            if (!checkAudioPermission()) {
+                solicitarPermisoAudio()
+                return@setOnClickListener
+            }
+
+            if (!isRecordingDialog) {
+                val file = File(externalCacheDir, "apunte_audio_${System.currentTimeMillis()}.3gp")
+                nuevoAudioPath = file.absolutePath
+
+                val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    MediaRecorder(context)
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaRecorder()
+                }
+
+                try {
+                    dialogMediaRecorder = recorder.apply {
+                        setAudioSource(MediaRecorder.AudioSource.MIC)
+                        setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+                        setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
+                        setOutputFile(nuevoAudioPath)
+                        prepare()
+                        start()
+                    }
+                    isRecordingDialog = true
+                    btnGrabarAudioDialog.text = "⏹ Detener"
+                    cronometroDialog.base = SystemClock.elapsedRealtime()
+                    cronometroDialog.start()
+                    Toast.makeText(context, "Grabando nuevo audio...", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "Error al iniciar grabación", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                try {
+                    dialogMediaRecorder?.stop()
+                    dialogMediaRecorder?.release()
+                    dialogMediaRecorder = null
+                    isRecordingDialog = false
+                    btnGrabarAudioDialog.text = "🎤 Grabar Audio"
+                    cronometroDialog.stop()
+                    tvEstadoAudio.text = "Audio: 🔊 Nuevo audio grabado"
+                    Toast.makeText(context, "Nuevo audio listo para guardar", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
+        btnReproducirAudioDialog.setOnClickListener {
+            if (nuevoAudioPath.isEmpty() || !File(nuevoAudioPath).exists()) {
+                Toast.makeText(context, "No hay audio disponible para reproducir", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            try {
+                dialogMediaPlayer?.release()
+                dialogMediaPlayer = MediaPlayer().apply {
+                    setDataSource(nuevoAudioPath)
+                    prepare()
+                    start()
+                }
+                Toast.makeText(context, "Reproduciendo audio...", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
         layout.addView(etTema)
         layout.addView(etFecha)
         layout.addView(etDesc)
+        layout.addView(tvEstadoAudio)
+        layout.addView(cronometroDialog)
+        layout.addView(layoutBotonesAudio)
 
-        AlertDialog.Builder(context)
+        val dialog = AlertDialog.Builder(context)
             .setTitle("Actualizar Apunte")
             .setView(layout)
             .setPositiveButton("Guardar") { _, _ ->
@@ -290,6 +400,7 @@ class ApuntesActivity : AppCompatActivity() {
                 apunte.tema = nuevoTema
                 apunte.fecha = nuevaFecha
                 apunte.descripcion = nuevaDesc
+                apunte.audio = nuevoAudioPath
 
                 val updatedRows = dbHelper.updateApunte(apunte)
                 if (updatedRows > 0) {
@@ -301,7 +412,17 @@ class ApuntesActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton("Cancelar", null)
-            .show()
+            .setOnDismissListener {
+                try {
+                    dialogMediaRecorder?.release()
+                    dialogMediaPlayer?.release()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            .create()
+
+        dialog.show()
     }
 
     private fun checkAudioPermission(): Boolean {
