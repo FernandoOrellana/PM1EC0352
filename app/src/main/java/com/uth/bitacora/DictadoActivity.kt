@@ -7,12 +7,15 @@ import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import java.util.Locale
 
 class DictadoActivity : AppCompatActivity() {
@@ -59,6 +62,19 @@ class DictadoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dictado)
 
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.dictadoMain)) { v, insets ->
+            val imeAndSystemBars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime()
+            )
+            v.setPadding(
+                imeAndSystemBars.left,
+                imeAndSystemBars.top,
+                imeAndSystemBars.right,
+                imeAndSystemBars.bottom
+            )
+            insets
+        }
+
         dbHelper = DatabaseHelper(this)
 
         btnAtras = findViewById(R.id.btnAtrasDictado)
@@ -66,6 +82,15 @@ class DictadoActivity : AppCompatActivity() {
         btnIniciarDictado = findViewById(R.id.btnIniciarDictadoVoz)
         etDescripcion = findViewById(R.id.etDictadoDescripcion)
         btnGuardarDictado = findViewById(R.id.btnGuardarDictado)
+
+        val scrollView = findViewById<ScrollView>(R.id.dictadoMain)
+        etDescripcion.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                scrollView.postDelayed({
+                    scrollView.smoothScrollTo(0, etDescripcion.top)
+                }, 200)
+            }
+        }
 
         btnAtras.setOnClickListener {
             finish()

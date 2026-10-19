@@ -14,6 +14,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Chronometer
 import android.widget.EditText
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -83,8 +84,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            val imeAndSystemBars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime()
+            )
+            v.setPadding(
+                imeAndSystemBars.left,
+                imeAndSystemBars.top,
+                imeAndSystemBars.right,
+                imeAndSystemBars.bottom
+            )
             insets
         }
 
@@ -100,6 +108,16 @@ class MainActivity : AppCompatActivity() {
         btnGuardar = findViewById(R.id.btnGuardar)
         btnVerApuntes = findViewById(R.id.btnVerApuntes)
         btnDictar = findViewById(R.id.btnDictarDescripcion)
+
+        // Hacer scroll automático al enfocar el área de descripción
+        val scrollView = findViewById<ScrollView>(R.id.main)
+        etDescripcion.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                scrollView.postDelayed({
+                    scrollView.smoothScrollTo(0, etDescripcion.top)
+                }, 200)
+            }
+        }
 
         // Configurar selector de fecha Modal (DatePickerDialog)
         etFecha.isFocusable = false
