@@ -284,6 +284,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun guardarApunte() {
+        // Si hay una grabación en curso al presionar Guardar, se detiene y guarda automáticamente
+        if (isRecording) {
+            detenerGrabacion()
+        }
+
         val asignatura = spinnerAsignatura.selectedItem?.toString() ?: ""
         val tema = etTema.text.toString().trim()
         val fecha = etFecha.text.toString().trim()
@@ -358,6 +363,13 @@ class MainActivity : AppCompatActivity() {
             .setMessage(mensaje)
             .setPositiveButton("Aceptar", null)
             .show()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (isRecording) {
+            detenerGrabacion()
+        }
     }
 
     override fun onDestroy() {
